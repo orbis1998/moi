@@ -1,0 +1,34 @@
+.budget-inputs {
+    display: flex;
+    gap: 10px;
+    align-items: flex-end;
+}
+
+.currency-select {
+    width: 100px;
+    flex-shrink: 0;
+}
+
+.budget-group label {
+    display: block;
+    margin-bottom: 8px;
+}
+
+.whatsapp-btn {
+    background-color: #25d366 !important;
+    color: white !important;
+    display: flex !important;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    font-weight: 600;
+    transition: all 0.3s ease;
+}
+
+.whatsapp-btn:hover {
+    background-color: #128c7e !important;
+}
+
+.whatsapp-btn i {
+    font-size: 20px;
+}

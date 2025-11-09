@@ -1,0 +1,114 @@
+/* Styles pour le formulaire de contact avec WhatsApp */
+
+.contact-form {
+    max-width: 600px;
+    margin: 0 auto;
+    background: #fff;
+    padding: 30px;
+    border-radius: 12px;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+}
+
+.form-group {
+    margin-bottom: 20px;
+}
+
+.form-group label {
+    display: block;
+    font-weight: 600;
+    margin-bottom: 8px;
+    color: var(--gris-fonce);
+}
+
+.form-control {
+    width: 100%;
+    padding: 12px;
+    border: 2px solid #e1e1e1;
+    border-radius: 8px;
+    font-size: 16px;
+    transition: all 0.3s ease;
+}
+
+.form-control:focus {
+    border-color: #25D366;
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(37, 211, 102, 0.1);
+}
+
+/* Style pour le groupe budget + devise */
+.budget-group {
+    margin-bottom: 20px;
+}
+
+.budget-inputs {
+    display: flex;
+    gap: 12px;
+    align-items: stretch;
+}
+
+.budget-inputs .form-control {
+    margin: 0;
+}
+
+.currency-select {
+    width: 120px;
+    flex-shrink: 0;
+}
+
+/* Style pour les selects */
+select.form-control {
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='%23333' viewBox='0 0 16 16'%3E%3Cpath d='M8 11L3 6h10l-5 5z'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 12px center;
+    background-size: 16px;
+    padding-right: 40px;
+}
+
+/* Style pour le bouton WhatsApp */
+.whatsapp-submit {
+    width: 100%;
+    padding: 16px 24px;
+    background-color: #25D366;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-size: 18px;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.whatsapp-submit:hover {
+    background-color: #128C7E;
+    transform: translateY(-2px);
+}
+
+.whatsapp-submit i {
+    font-size: 24px;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .contact-form {
+        padding: 20px;
+    }
+
+    .budget-inputs {
+        flex-direction: column;
+        gap: 8px;
+    }
+    
+    .currency-select {
+        width: 100%;
+    }
+
+    .whatsapp-submit {
+        padding: 14px 20px;
+        font-size: 16px;
+    }
+}
