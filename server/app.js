@@ -14,6 +14,7 @@ const apiRoutes = require('./routes/api');
 const adminRoutes = require('./routes/admin');
 
 const app = express();
+app.set('trust proxy', 1);
 const PORT = process.env.PORT || 3000;
 const ADMIN_PATH = process.env.ADMIN_PATH || 'gestion-interne-aroman';
 const SITE_URL = process.env.SITE_URL || `http://localhost:${PORT}`;
@@ -35,7 +36,7 @@ app.use(helmet({
       defaultSrc: ["'self'"],
       styleSrc: ["'self'", "'unsafe-inline'", 'https://fonts.googleapis.com', 'https://cdnjs.cloudflare.com'],
       fontSrc: ["'self'", 'https://fonts.gstatic.com', 'https://cdnjs.cloudflare.com'],
-      scriptSrc: ["'self'", "'unsafe-inline'"],
+      scriptSrc: ["'self'", "'unsafe-inline'", 'https://cdn.jsdelivr.net'],
       imgSrc: ["'self'", 'data:', 'https:', 'blob:'],
       connectSrc: ["'self'"]
     }
@@ -69,7 +70,7 @@ app.use('/api/contact', contactLimiter);
 
 const { initDb } = require('./db');
 
-async function start() {
+async function createApp() {
   await initDb();
 
   app.use('/api', apiRoutes());
@@ -91,13 +92,24 @@ async function start() {
     res.status(500).send('Erreur serveur.');
   });
 
-  app.listen(PORT, () => {
-    console.log(`\n  ✦ ${SITE_NAME} — Portfolio v2.0`);
-    console.log(`  → Site    : http://localhost:${PORT}`);
-    console.log(`  → Admin   : http://localhost:${PORT}/${ADMIN_PATH}\n`);
-  });
+  return app;
 }
 
-start().catch(err => { console.error('Startup failed:', err); process.exit(1); });
+const appReady = createApp();
 
-module.exports = app;
+if (require.main === module) {
+  appReady
+    .then((server) => {
+      server.listen(PORT, () => {
+        console.log(`\n  ✦ ${SITE_NAME} — Portfolio v2.0`);
+        console.log(`  → Site    : http://localhost:${PORT}`);
+        console.log(`  → Admin   : http://localhost:${PORT}/${ADMIN_PATH}\n`);
+      });
+    })
+    .catch((err) => {
+      console.error('Startup failed:', err);
+      process.exit(1);
+    });
+}
+
+module.exports = appReady;

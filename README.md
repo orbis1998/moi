@@ -72,6 +72,22 @@ npm run dev
 
 ## Production
 
+### Vercel (recommandé pour ce repo)
+
+Le domaine `aromanemetshu.com` doit pointer vers un déploiement Vercel connecté à ce dépôt GitHub.
+
+1. Importer le repo `orbis1998/moi` dans [Vercel](https://vercel.com)
+2. Ajouter les variables d'environnement :
+   - `NODE_ENV=production`
+   - `DATABASE_URL` (Supabase PostgreSQL)
+   - `DATABASE_DRIVER=postgres`
+   - `SESSION_SECRET`
+   - `ADMIN_PATH`, `ADMIN_USERNAME`, `ADMIN_PASSWORD`
+   - `SITE_URL=https://www.aromanemetshu.com`
+3. Déployer — `vercel.json` et `api/index.js` routent toutes les pages vers Express
+
+### Serveur Node classique
+
 1. Définir `NODE_ENV=production`
 2. Changer `SESSION_SECRET`, `ADMIN_PASSWORD`
 3. Configurer `SITE_URL` avec le domaine réel
