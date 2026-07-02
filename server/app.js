@@ -46,6 +46,9 @@ app.use(cookieParser());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(express.static(path.join(__dirname, '..', 'public'), { maxAge: process.env.NODE_ENV === 'production' ? '7d' : 0 }));
+app.get('/favicon.ico', (_req, res) => {
+  res.sendFile(path.join(__dirname, '..', 'public', 'assets', 'img', 'logo.png'));
+});
 
 app.use(session({
   secret: process.env.SESSION_SECRET || 'dev-secret-change-me',

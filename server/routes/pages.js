@@ -20,7 +20,7 @@ module.exports = function pageRoutes(siteConfig) {
   const seoDefaults = {
     siteUrl,
     siteName,
-    ogImage: `${siteUrl}/assets/img/og-default.jpg`
+    ogImage: `${siteUrl}/assets/img/logo.png`
   };
 
   router.get('/', async (req, res, next) => {
