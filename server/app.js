@@ -12,6 +12,7 @@ const { trackVisitor } = require('./middleware/analytics');
 const pageRoutes = require('./routes/pages');
 const apiRoutes = require('./routes/api');
 const adminRoutes = require('./routes/admin');
+const { initDb } = require('./db');
 
 const app = express();
 app.set('trust proxy', 1);
@@ -53,8 +54,18 @@ app.get('/favicon.ico', (_req, res) => {
   res.sendFile(path.join(__dirname, '..', 'public', 'assets', 'img', 'logo.png'));
 });
 
-app.get('/health', (_req, res) => {
-  res.status(200).json({ ok: true, env: process.env.VERCEL ? 'vercel' : 'node' });
+app.get('/health', async (_req, res) => {
+  try {
+    await initDb();
+    res.status(200).json({ ok: true, env: process.env.VERCEL ? 'vercel' : 'node', db: 'connected' });
+  } catch (err) {
+    res.status(503).json({
+      ok: false,
+      env: process.env.VERCEL ? 'vercel' : 'node',
+      db: 'error',
+      message: err.message || String(err)
+    });
+  }
 });
 
 app.use(session({
@@ -74,42 +85,29 @@ app.use(trackVisitor);
 const contactLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 10, message: { error: 'Trop de requêtes.' } });
 app.use('/api/contact', contactLimiter);
 
-const { initDb } = require('./db');
+app.use('/api', apiRoutes());
+app.use(`/${ADMIN_PATH}`, adminRoutes(ADMIN_PATH));
+app.use('/', pageRoutes({ siteUrl: SITE_URL, siteName: SITE_NAME }));
 
-async function createApp() {
-  await initDb();
-
-  app.use('/api', apiRoutes());
-  app.use(`/${ADMIN_PATH}`, adminRoutes(ADMIN_PATH));
-  app.use('/', pageRoutes({ siteUrl: SITE_URL, siteName: SITE_NAME }));
-
-  app.use((_req, res) => {
-    res.status(404).render('pages/404', {
-      siteUrl: SITE_URL,
-      siteName: SITE_NAME,
-      title: 'Page introuvable',
-      description: 'La page demandée n\'existe pas.',
-      canonical: SITE_URL
-    });
+app.use((_req, res) => {
+  res.status(404).render('pages/404', {
+    siteUrl: SITE_URL,
+    siteName: SITE_NAME,
+    title: 'Page introuvable',
+    description: 'La page demandée n\'existe pas.',
+    canonical: SITE_URL
   });
+});
 
-  app.use((err, _req, res, _next) => {
-    console.error(err);
-    res.status(500).send('Erreur serveur.');
-  });
-
-  return app;
-}
-
-const appReady = createApp().catch((err) => {
-  console.error('App bootstrap failed:', err.message);
-  throw err;
+app.use((err, _req, res, _next) => {
+  console.error(err);
+  res.status(500).send(`Erreur serveur: ${err.message || 'Erreur interne'}`);
 });
 
 if (require.main === module) {
-  appReady
-    .then((server) => {
-      server.listen(PORT, () => {
+  initDb()
+    .then(() => {
+      app.listen(PORT, () => {
         console.log(`\n  ✦ ${SITE_NAME} — Portfolio v2.0`);
         console.log(`  → Site    : http://localhost:${PORT}`);
         console.log(`  → Admin   : http://localhost:${PORT}/${ADMIN_PATH}\n`);
@@ -121,4 +119,4 @@ if (require.main === module) {
     });
 }
 
-module.exports = appReady;
+module.exports = app;

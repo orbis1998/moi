@@ -1,32 +1,39 @@
-const fs = require('fs');
-const path = require('path');
-const bcrypt = require('bcryptjs');
-
-async function initDb() {
-  if (process.env.VERCEL && !process.env.DATABASE_URL) {
-    throw new Error('DATABASE_URL manquant sur Vercel. Configurez les variables dans le dashboard Vercel.');
-  }
-
-  const driver = process.env.DATABASE_DRIVER || (process.env.DATABASE_URL ? 'postgres' : 'sqlite');
-
-  if (driver === 'postgres' || process.env.DATABASE_URL) {
-    const pg = require('./postgres');
-    const db = await pg.initDb();
-    await ensureAdmin(db);
-    return db;
-  }
-
-  const sqlite = require('./sqlite');
-  const db = await sqlite.initDb();
-  console.log('  → Base de données : SQLite (local)');
-  return db;
-}
-
 let dbApi = null;
+let initPromise = null;
 
 async function bootstrap() {
-  dbApi = await initDb();
-  return dbApi;
+  if (dbApi) return dbApi;
+  if (initPromise) return initPromise;
+
+  initPromise = (async () => {
+    const fs = require('fs');
+    const path = require('path');
+    const bcrypt = require('bcryptjs');
+
+    if (process.env.VERCEL && !process.env.DATABASE_URL) {
+      throw new Error('DATABASE_URL manquant sur Vercel');
+    }
+
+    const driver = process.env.DATABASE_DRIVER || (process.env.DATABASE_URL ? 'postgres' : 'sqlite');
+
+    if (driver === 'postgres' || process.env.DATABASE_URL) {
+      const pg = require('./postgres');
+      const db = await pg.initDb();
+      await ensureAdmin(db);
+      dbApi = db;
+      return dbApi;
+    }
+
+    const sqlite = require('./sqlite');
+    dbApi = await sqlite.initDb();
+    console.log('  → Base de données : SQLite (local)');
+    return dbApi;
+  })().catch((err) => {
+    initPromise = null;
+    throw err;
+  });
+
+  return initPromise;
 }
 
 function getDb() {

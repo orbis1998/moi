@@ -10,15 +10,27 @@ let dbApi = null;
 
 const JSON_FIELDS = ['technologies', 'screenshots', 'statistics', 'services'];
 
+function encodePasswordInUrl(url) {
+  try {
+    const parsed = new URL(url);
+    if (parsed.password) {
+      parsed.password = encodeURIComponent(decodeURIComponent(parsed.password));
+    }
+    return parsed.toString();
+  } catch {
+    return url;
+  }
+}
+
 function normalizeConnectionString(url) {
   if (!url) return url;
-  let normalized = url.trim();
-  const isPooler = normalized.includes('pooler.supabase.com');
-  const isTransactionPooler = /:6543\//.test(normalized);
+  let normalized = encodePasswordInUrl(url.trim());
 
-  if (isPooler && isTransactionPooler && !/pgbouncer=true/i.test(normalized)) {
-    normalized += normalized.includes('?') ? '&' : '?';
-    normalized += 'pgbouncer=true';
+  if (process.env.VERCEL && normalized.includes('pooler.supabase.com') && /:6543\//.test(normalized)) {
+    normalized = normalized
+      .replace(':6543/', ':5432/')
+      .replace(/([?&])pgbouncer=true(&|$)/gi, '$1')
+      .replace(/[?&]$/, '');
   }
 
   if (!/connect_timeout=/i.test(normalized)) {
@@ -67,12 +79,12 @@ function prepare(sql) {
   return {
     async get(...params) {
       const { text, values } = toPgParams(sql, params);
-      const result = await pool.query({ text, values, name: undefined });
+      const result = await pool.query(text, values);
       return normalizeRow(result.rows[0]);
     },
     async all(...params) {
       const { text, values } = toPgParams(sql, params);
-      const result = await pool.query({ text, values, name: undefined });
+      const result = await pool.query(text, values);
       return result.rows.map(normalizeRow);
     },
     async run(...params) {
@@ -81,7 +93,7 @@ function prepare(sql) {
       if (upper.startsWith('INSERT') && !upper.includes('RETURNING')) {
         text += ' RETURNING id';
       }
-      const result = await pool.query({ text, values, name: undefined });
+      const result = await pool.query(text, values);
       return {
         changes: result.rowCount,
         lastInsertRowid: result.rows[0]?.id
@@ -91,6 +103,8 @@ function prepare(sql) {
 }
 
 async function initDb() {
+  if (dbApi) return dbApi;
+
   const rawUrl = process.env.DATABASE_URL;
   if (!rawUrl) throw new Error('DATABASE_URL manquant pour PostgreSQL');
 
@@ -105,14 +119,9 @@ async function initDb() {
     connectionTimeoutMillis: 30000
   });
 
-  const timeoutMs = 30000;
-  const timeout = new Promise((_, reject) => {
-    setTimeout(() => reject(new Error(`Timeout connexion PostgreSQL (${timeoutMs / 1000}s)`)), timeoutMs);
-  });
-
-  await Promise.race([pool.query('SELECT 1'), timeout]);
+  await pool.query('SELECT 1');
   dbApi = { prepare, pool, driver: 'postgres' };
-  console.log('  → Base de données : PostgreSQL (Supabase)');
+  console.log(`  → Base de données : PostgreSQL (${isVercel ? 'session pooler' : 'Supabase'})`);
   return dbApi;
 }
 
