@@ -74,10 +74,16 @@ async function initDb() {
   pool = new Pool({
     connectionString,
     ssl: { rejectUnauthorized: false },
-    max: 10
+    max: 5,
+    connectionTimeoutMillis: 8000,
+    idleTimeoutMillis: 10000,
+    query_timeout: 10000
   });
 
-  await pool.query('SELECT 1');
+  const timeout = new Promise((_, reject) => {
+    setTimeout(() => reject(new Error('Timeout connexion PostgreSQL (8s)')), 8000);
+  });
+  await Promise.race([pool.query('SELECT 1'), timeout]);
   dbApi = { prepare, pool, driver: 'postgres' };
   console.log('  → Base de données : PostgreSQL (Supabase)');
   return dbApi;

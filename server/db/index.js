@@ -3,6 +3,10 @@ const path = require('path');
 const bcrypt = require('bcryptjs');
 
 async function initDb() {
+  if (process.env.VERCEL && !process.env.DATABASE_URL) {
+    throw new Error('DATABASE_URL manquant sur Vercel. Configurez les variables dans le dashboard Vercel.');
+  }
+
   const driver = process.env.DATABASE_DRIVER || (process.env.DATABASE_URL ? 'postgres' : 'sqlite');
 
   if (driver === 'postgres' || process.env.DATABASE_URL) {

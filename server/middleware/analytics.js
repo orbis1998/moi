@@ -21,8 +21,10 @@ function detectSource(referrer) {
 
 async function trackVisitor(req, res, next) {
   const adminPath = req.app.locals.adminPath;
-  if (req.path.startsWith(`/${adminPath}`) || req.path.startsWith('/api/admin')) return next();
+  if (req.path.startsWith(`/${adminPath}`) || req.path.startsWith('/api/admin') || req.path === '/health') return next();
   if (req.path.match(/\.(css|js|png|jpg|jpeg|gif|webp|svg|ico|woff2?)$/)) return next();
+
+  res.locals.pageViewStart = Date.now();
 
   try {
     const db = getDb();
@@ -43,37 +45,46 @@ async function trackVisitor(req, res, next) {
     const referrer = req.headers.referer || '';
     const source = detectSource(referrer);
 
-    const existing = await db.prepare('SELECT id FROM visitors WHERE session_id = ?').get(sessionId);
-    if (existing) {
-      await db.prepare(`UPDATE visitors SET last_visit = datetime('now'), ip_address = ?, referrer = ?, source = ? WHERE session_id = ?`)
-        .run(ip, referrer, source, sessionId);
-      req.visitorId = existing.id;
-    } else {
-      const result = await db.prepare(`
-        INSERT INTO visitors (session_id, ip_address, country, city, device, browser, os, referrer, source)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-      `).run(
-        sessionId, ip, null, null,
-        ua.device.type || 'desktop',
-        `${ua.browser.name || 'Unknown'} ${ua.browser.version || ''}`.trim(),
-        `${ua.os.name || 'Unknown'} ${ua.os.version || ''}`.trim(),
-        referrer, source
-      );
-      req.visitorId = result.lastInsertRowid;
-    }
-
-    res.locals.pageViewStart = Date.now();
-    res.on('finish', () => {
-      if (req.visitorId && res.statusCode < 400) {
-        const duration = Math.round((Date.now() - res.locals.pageViewStart) / 1000);
-        db.prepare('INSERT INTO page_views (visitor_id, page_path, duration_seconds) VALUES (?, ?, ?)')
-          .run(req.visitorId, req.path, duration)
-          .catch(err => console.error('Page view error:', err.message));
+    void (async () => {
+      try {
+        const existing = await db.prepare('SELECT id FROM visitors WHERE session_id = ?').get(sessionId);
+        if (existing) {
+          await db.prepare(`UPDATE visitors SET last_visit = datetime('now'), ip_address = ?, referrer = ?, source = ? WHERE session_id = ?`)
+            .run(ip, referrer, source, sessionId);
+          req.visitorId = existing.id;
+        } else {
+          const result = await db.prepare(`
+            INSERT INTO visitors (session_id, ip_address, country, city, device, browser, os, referrer, source)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+          `).run(
+            sessionId, ip, null, null,
+            ua.device.type || 'desktop',
+            `${ua.browser.name || 'Unknown'} ${ua.browser.version || ''}`.trim(),
+            `${ua.os.name || 'Unknown'} ${ua.os.version || ''}`.trim(),
+            referrer, source
+          );
+          req.visitorId = result.lastInsertRowid;
+        }
+      } catch (err) {
+        console.error('Analytics visitor error:', err.message);
       }
-    });
+    })();
   } catch (err) {
     console.error('Analytics error:', err.message);
   }
+
+  res.on('finish', () => {
+    if (!req.visitorId || res.statusCode >= 400) return;
+    try {
+      const db = getDb();
+      const duration = Math.round((Date.now() - res.locals.pageViewStart) / 1000);
+      db.prepare('INSERT INTO page_views (visitor_id, page_path, duration_seconds) VALUES (?, ?, ?)')
+        .run(req.visitorId, req.path, duration)
+        .catch(err => console.error('Page view error:', err.message));
+    } catch (err) {
+      console.error('Page view error:', err.message);
+    }
+  });
 
   next();
 }

@@ -24,7 +24,9 @@ app.locals.adminPath = ADMIN_PATH;
 app.locals.siteUrl = SITE_URL;
 app.locals.siteName = SITE_NAME;
 
-const uploadsDir = path.join(__dirname, '..', 'public', 'uploads');
+const uploadsDir = process.env.VERCEL
+  ? path.join('/tmp', 'uploads')
+  : path.join(__dirname, '..', 'public', 'uploads');
 if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir, { recursive: true });
 
 app.set('view engine', 'ejs');
@@ -49,6 +51,10 @@ app.use(express.urlencoded({ extended: true }));
 app.use(express.static(path.join(__dirname, '..', 'public'), { maxAge: process.env.NODE_ENV === 'production' ? '7d' : 0 }));
 app.get('/favicon.ico', (_req, res) => {
   res.sendFile(path.join(__dirname, '..', 'public', 'assets', 'img', 'logo.png'));
+});
+
+app.get('/health', (_req, res) => {
+  res.status(200).json({ ok: true, env: process.env.VERCEL ? 'vercel' : 'node' });
 });
 
 app.use(session({
@@ -95,7 +101,10 @@ async function createApp() {
   return app;
 }
 
-const appReady = createApp();
+const appReady = createApp().catch((err) => {
+  console.error('App bootstrap failed:', err.message);
+  throw err;
+});
 
 if (require.main === module) {
   appReady
